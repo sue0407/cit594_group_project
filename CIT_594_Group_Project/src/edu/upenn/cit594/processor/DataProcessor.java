@@ -312,6 +312,59 @@ public class DataProcessor {
 	 */
 	
 	
+	/*
+	 * TBD Not used yet
+	 * Strategy Design Pattern for Average Market Value and Average Total Livable Area
+	 * 
+	 */
+	public int [] calcAverage(int zipCode, String dataType) {
+		
+		if (propertyDataList == null) {
+			System.out.println("Property data are null.");
+			return null; // OK with return null?
+		} 
+		
+		// Set variables for return
+		int aveData = 0;
+		int [] zipCodeAve = new int [2];
+		
+		if (dataType.equals("marketValue")) {
+			// Return the existing data from the hash map if it already exists
+			if (memZipCodeAveMktValMap.containsKey(zipCode)) {
+				zipCodeAve[0] = zipCode;
+				zipCodeAve[1] = memZipCodeAveMktValMap.get(zipCode);
+				return zipCodeAve;
+			
+		} else { // dataType is "livableArea"
+			// Return the existing data from the hash map if it already exists
+			if (memZipCodeAveLivAreaMap.containsKey(zipCode)) {
+				zipCodeAve[0] = zipCode;
+				zipCodeAve[1] = memZipCodeAveLivAreaMap.get(zipCode);
+				return zipCodeAve;
+			}
+			
+		}
+		
+		double sumData = 0;
+		int sumCount = 0;
+		for (PropertyData prop: propertyDataList) {	
+			if (zipCode == prop.getZipCode()) {
+				if (dataType.equals("marketValue")) {
+				sumData += prop.getMarketValue();
+				} else { // dataType is "livableArea"
+				sumData += prop.getTotalLivableArea();
+				}
+				sumCount ++;
+				}
+				aveData = (int) sumData / sumCount;
+				memZipCodeAveLivAreaMap.put(zipCode, aveData); // Update memoization hash map
+				
+				zipCodeAve[0] = zipCode;
+				zipCodeAve[1] = aveData;
+				return zipCodeAve;
+			}
+		}
+	}
 	
 	
 	/*
