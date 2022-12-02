@@ -412,9 +412,5 @@ public class DataProcessor {
 	 */
 	
 	public static int calcAverage(int zipCode, PropertyData propertyData) {
-			
-
-		}
-	
-	
+	}
 }
