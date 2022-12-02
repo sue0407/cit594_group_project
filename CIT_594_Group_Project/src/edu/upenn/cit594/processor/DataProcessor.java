@@ -357,8 +357,11 @@ public class DataProcessor {
 				sumCount ++;
 				}
 				aveData = (int) sumData / sumCount;
-				memZipCodeAveLivAreaMap.put(zipCode, aveData); // Update memoization hash map
-				
+				if (dataType.equals("marketValue")) {
+					memZipCodeAveMktValMap.put(zipCode, aveData); // Update memoization hash map
+				} else { // dataType is "livableArea"
+					memZipCodeAveLivAreaMap.put(zipCode, aveData); // Update memoization hash map
+				}
 				zipCodeAve[0] = zipCode;
 				zipCodeAve[1] = aveData;
 				return zipCodeAve;
