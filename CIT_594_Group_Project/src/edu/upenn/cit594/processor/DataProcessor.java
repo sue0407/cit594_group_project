@@ -1,212 +1,364 @@
-package edu.upenn.cit594.ui;
+package edu.upenn.cit594.processor;
 
-import java.io.IOException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.InputMismatchException;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Scanner;
+import java.util.Set;
 import java.util.TreeMap;
-import java.util.regex.Pattern;
 
-import edu.upenn.cit594.logging.Logger;
-import edu.upenn.cit594.processor.CovidReader;
-import edu.upenn.cit594.processor.DataProcessor;
-import edu.upenn.cit594.processor.PopulationReader;
-import edu.upenn.cit594.processor.PropertyReader;
+import edu.upenn.cit594.util.PopulationData;
+import edu.upenn.cit594.util.CovidData;
+import edu.upenn.cit594.util.PropertyData;
 
-public class UserInterface {
+public class DataProcessor {
 	
-	protected DataProcessor processor;
-	protected Logger logger;
+	// Data from data utility
+	private List <PopulationData> populationDataList;
+	private List <CovidData> covidDataList;
+	private List <PropertyData> propertyDataList;
+
 	
-	// Data reader
+	// TBD DO we need readers in processor?
 	private PopulationReader populationReader;
 	private CovidReader covidReader;
 	private PropertyReader properyReader;
 	
-	public UserInterface(DataProcessor processor, Logger logger) {
-		
-	public void displayMenuAndResults() {
+	// Memoization data set (first Integer is zip code for all HashMap other than option 3)
+	// For population related various analysis (e.g. per capita)
+	private HashMap<Integer, Integer> memZipCodePopulationMap = new HashMap<>(); 
+	// Option 3 for partial or full total vaccinations per capita for the specific date.  More explanation later in option 3 method
+	private HashMap<String, HashMap<Integer, double[]>> mimDateVacciMap = new HashMap<String, HashMap<Integer, double[]>>(); 
+	// Option 4 for average market value of property for the given zip code
+	private HashMap<Integer, Integer> memZipCodeAveMktValMap  = new HashMap<>(); 
+	// Option 5 for average total livable area of property for the given zip code
+	private HashMap<Integer, Integer> memZipCodeAveLivAreaMap  = new HashMap<>(); 
+	// Option 6 for total market value of property per capita for the given zip code
+	private HashMap<Integer, Integer> memZipCodeMktValPerCapMap = new HashMap<>(); 
 	
-		try {
-			
-			String menuPrompt = "\nPlease enter an option between 1-7, or 0 to Exit program: \n" +
-	                "1. Available Actions\n" +
-	                "2. Total Population for All ZIP Codes\n" +
-	                "3. Partial or Full Vaccinations Per Capita for each ZIP code for the Specified Date\n" +
-	                "4. Average Market Value for the Specified ZIP Code\n" +
-	                "5. Average Total Livable Area for the Specified ZIP Code\n" +
-	                "6. Total Market Value Per Capita for the Specified ZIP Code\n" +
-	                "7. Additional Feature (TBD)\n";
-			System.out.println("Welcome!" + menuPrompt);
-			System.out.print("> ");
-			Scanner sc = new Scanner (System.in);
-			int inputInt = sc.nextInt();
-			System.out.flush(); // TBD Check where flush() to be placed
-			
-			// Keep asking for input if it is not 0-7
-			while (! (inputInt == 0 || inputInt == 1 || inputInt == 2 || inputInt == 3 || 
-					inputInt == 4 || inputInt == 5 || inputInt == 6 || inputInt == 7)){
-				System.out.println("Input error. Please enter valid input 0-7: ");
-				System.out.print("> ");
-				inputInt = sc.nextInt();
-				System.out.flush(); // TBD Check where flush() to be placed
-			}
-			
-			while (! (inputInt == 0)) {
-			
-				
-				switch (inputInt) {
-				
-				case (1): // Available Actions
-					System.out.println("BEGIN OUTPUT");
-					System.out.println("0");
-					System.out.println("1");
-					// TBD Printout of other available actions? Shall we use readers?
-					if (populationReader != null)  System.out.println("2");}
-					if (! (covidReader == null || populationReader == null)) {System.out.println("3");}
-					if (propertyReader != null) {
-						System.out.println("4");
-						System.out.println("5");
-						}
-					if (! (covidReader == null || propertyReader == null)) {System.out.println("6");}
-					System.out.println("END OUTPUT");
-
-				
-				case (2): // Total Population for All ZIP Codes
-					int totalPop = processor.calcTotalPop() ;
-					System.out.println(totalPop);
-					break;
-					
-				case (3): // Partial or Full Vaccinations Per Capita
-					System.out.println("Enter vaccination status of \"partial\" or \"full\": ");
-					System.out.print("> ");
-					String vacciInput = sc.next().toLowerCase(); 
-					while (! (vacciInput == "partial" || vacciInput == "full")) {
-						System.out.println("Invalid input. Enter vaccination status of \"partial\" or \"full\": ");
-						System.out.print("> ");
-						vacciInput = sc.next().toLowerCase();
-					}
-					System.out.println("Enter the date (YYYY-MM-DD): ");
-					System.out.print("> ");
-					String dateInput = sc.next();
-					while (!dateInputCheck(dateInput)){
-						System.out.println("Invalid input. Enter the date (YYYY-MM-DD): ");
-						System.out.print("> ");
-						dateInput = sc.next();
-					}
-					TreeMap<Integer, Double> vacciPerCap = new TreeMap<Integer, Double>();
-					vacciPerCap = processor.calcVacciPerCap(vacciInput, dateInput);
-					System.out.println("BEGIN OUTPUT");
-					System.out.println(); // TBD Print out
-					for (Map.Entry<Integer, Double> entry: vacciPerCap.entrySet()){
-						int zipCode = vacciPerCap.firstKey();
-						double numVacciPerCap = ((Entry<Integer, Double>) vacciPerCap).getValue();
-						System.out.println(zipCode + " " + numVacciPerCap);
-					}
-					System.out.println("END OUTPUT");
-					break;
-					
-				case (4): // Average Market Value
-					System.out.println("Enter a 5-digit ZipCode: \n"); // Use helper method to check valid input
-					System.out.print("> ");
-					int zipCode = sc.nextInt();
-					int [] aveMktVal = processor.calcAveMktVal(zipCode);
-					System.out.println(aveMktVal[1]);
-					break;
-					
-				case (5): // Average Total Livable Area
-					System.out.println("Enter a 5-digit ZipCode: \n"); //Use helper method to check valid input
-					zipCode = sc.nextInt();
-					int [] aveTotalLivArea = processor.calcAveLivArea(zipCode);
-					System.out.println(aveTotalLivArea[1]);
-					break;
-					
-				case (6): //Total Market Value Per Capita
-					System.out.println("Enter a 5-digit ZipCode: \n"); // Use helper method to check valid inputt
-					zipCode = sc.nextInt();
-					int [] totalMktValPerCap = processor.calcTotalMktValPerCap(zipCode);
-					System.out.println(totalMktValPerCap[1]);
-					break;
-					
-				case (7):
-					
-				default:
-					System.out.println("Error: Unexpected error in input\n");
-			}
-			System.out.println("You choose to exit.");
-			return;
-			
-			
-		} catch (IOException e) {
-			System.out.println("Error: Input or output error");
-			e.printStackTrace();
-		}
+	// Other map for option 3
+	private HashMap<String, HashMap<Integer,double[]>> dateVacciMap;
+	
+	public DataProcessor () {
 	}
+
+	// TBD how to use readers?
+	public DataProcessor (PopulationReader populationReader, CovidReader covidReader, PropertyReader properyReader) {
+		this.populationReader = populationReader;
+		this.covidReader = covidReader;
+		this.propertyReader = propertyReader;
 	}
 	
-
 	/*
-	 * Helper method to check date input format
-	 * @parameter date input
-	 * @return boolean result
+	 * Option 1: Available actions
+	 * Currently in the UserInterface class
 	 */
-	public boolean dateInputCheck (String dateInput) { // TBD correct codes?
-		try {
-			DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-			LocalDate.parse(dateInput, dtf);
-			return true;
-		} catch (Exception ingore){
-			return false;
+//	public int showAvailableActions () {
+//		
+//	}
+	
+	
+	/*
+	 * Option 2: Total Population for all ZIP code
+	 * @ parameter none
+	 * @ return total population
+	 */
+	public int calcTotalPop() {
+		int totalPop = 0;
+		for (PopulationData pop: populationDataList) { // Population Data to be checked & any need of check valid zip code or not
+			totalPop += pop.getPopulation(); //Population Data to be checked	
+		}
+		return totalPop;
+	}
+	
+	/*
+	 * Option 3: Partial or Full Vaccinations Per Capita for a Specified Date
+	 * @parameter vaccination status (partial or full) and specified date
+	 * @return Map of zip code (int) and vaccinations per capita (double)
+	 */
+	
+	public TreeMap<Integer, Double> calcVacciPerCap (String vacciStatus, String date){
+		
+		// Set up variables
+		int zipCode; // TBD
+		double numVacciPerCap;
+//		double[] numVacciPerCap = new double [2];
+		double printNumVacciPerCap; 
+		Comparator<Integer> comparator = (i1, i2) -> i1.compareTo(i2); // TBD Sort map by zip code
+		TreeMap<Integer, Double> printVacciParCapMap = new TreeMap<>(comparator); // TreeMap for printout
+		
+		// Get HashMap of vaccinations data from helper method 
+		// first double for partially vaccinated per cap and second full
+		HashMap<String, HashMap<Integer, double[]>> dateVacciMap = new HashMap<String, HashMap<Integer, double[]>>();
+		dateVacciMap = updateVacciPerCapMap(date);
+		
+		for (String key1: dateVacciMap.keySet()) { // TBD how to get data from nested Map
+			if (date.equals(key1)){
+				for (HashMap<Integer, double[]> key2: dateVacciMap.values()) {
+					if (vacciStatus == "partial") {
+						numVacciPerCap = (double) dateVacciMap.get(key1).get(key2)[0];
+						
+					} else { // vacciStatus == "full")
+						numVacciPerCap = (double) dateVacciMap.get(key1).get(key2)[1];
+					}
+					zipCode = (int) dateVacciMap.get(key1).getKey(); // TBD How to get zipcode key int od nested map?
+					printVacciParCapMap.put(zipCode, numVacciPerCap);
+					
+				} return printVacciParCapMap;
+			} else {
+				System.out.println(0);
+				System.out.println("There was no vaccinations data for the specified date");
+		}
 		}
 	}
 	
-	public static boolean checkValidZip(int zipcode, boolean property) {
-		boolean valid = false;
+	/*
+	 * Helper method for Option 3 to create HashMap / memoization to include vaccinations related data
+	 * HashMap structure: Outside String is date. Inside Map Integer is zip code
+	 * Within inside Map, two double are per capita vaccinations (first is number of partially vaccinated / second is fully vaccinated)
+	 * @ parameter specified date (no parameter for partial or full vaccinations / update HashMap for both data)
+	 * @ return Map of date (String), zip code (int) and vaccinations per capita (double)
+	 */
+	
+	public HashMap<String, HashMap<Integer,double[]>> updateVacciPerCapMap(String date) {
+		
+		if (covidDataList == null || populationDataList == null) {
+			System.out.println("Covid data or pupulation data are null.");
+			this.dateVacciMap = null;
+			return dateVacciMap; 
+		}
+		
+		// Variables set up
+		int zipCode;
+		int zipCodePopulation;
+		int partialVacci;
+		int fullVacci;
+		double[] numVacciPerCap = new double [2]; // first double for partially vaccinated per cap and second full
+		
+		// Return the existing data from the hash map if it already exists
+		if (mimDateVacciMap.containsKey(date)) { 
+			return mimDateVacciMap;
+		} 
+		
+		else {
+			this.dateVacciMap = new HashMap<String, HashMap<Integer, double[]>>();
+			HashMap<Integer, double[]> covidZipCodeNumVacciMap = new HashMap<>();
+			covidZipCodeNumVacciMap.put(zipCode, numVacciPerCap);
+			
+			for (CovidData covid: covidDataList) {
+				if (date.equals(covid.getDate())) { // TBD how to get date?
+					zipCode = covid.getZipCode();
+					zipCodePopulation = calcZipCodePopulation(zipCode);
+						
+					partialVacci = covid.getPartiallyVaccinated();
+					numVacciPerCap[0] = (double) (partialVacci / zipCodePopulation) ; // Partially vaccinated per capita
+					fullVacci = covid.getFullyVaccinated();
+					numVacciPerCap[1] = (double) fullVacci / zipCodePopulation ; // Fully vaccinated per capita
+					covidZipCodeNumVacciMap.put(zipCode, numVacciPerCap);
+					}
+					mimDateVacciMap.put(date, covidZipCodeNumVacciMap); // Update mimoization map
+					dateVacciMap.put(date, covidZipCodeNumVacciMap);
+					return dateVacciMap;
+			}
+		}
+	}
+	
+	
+	/*
+	 * Option 4: Average Market Value for a specific ZIP code
+	 * Note: Strategy design pattern
+	 * @ parameter specified zip code
+	 * @ return ave. market value
+	 */
+	
+	public int[] calcAveMktVal(int zipCode) {
+		
+		if (propertyDataList == null) {
+			System.out.println("Property data is null");
+			return null; // TBD OK with return null?
+		} 
+		
+		// Set variables for return
+		int aveMktVal = 0;
+		int [] zipCodeAveMktVal = new int [2];
+		
+		// Return the existing data from the hash map if it already exists
+		if (memZipCodeAveMktValMap.containsKey(zipCode)) {
+			zipCodeAveMktVal[0] = zipCode;
+			zipCodeAveMktVal[1] = memZipCodeAveMktValMap.get(zipCode);
+			return zipCodeAveMktVal;
+		} 
+		
+		else {
+			double sumMktVal = 0;
+			int sumCount = 0;
+			for (PropertyData prop: propertyDataList) {
+				if (zipCode == prop.getZipCode()) {
+					sumMktVal += prop.getMarketValue();
+					sumCount ++;
+				}
+				aveMktVal = (int) sumMktVal / sumCount;
+				memZipCodeAveMktValMap.put(zipCode, aveMktVal); // Update memoization hash map
+				
+				zipCodeAveMktVal[0] = zipCode;
+				zipCodeAveMktVal[1] = aveMktVal;
+				return zipCodeAveMktVal;
+			}
+			
+		}
+	}
+	
+	/*
+	 * Option 5: Average Total Livable Area for a specific ZIP code
+	 * Note: Strategy design pattern
+	 * @ parameter specified ZIP code
+	 * @ return ave. livable area
+	 */
+	public int [] calcAveLivArea(int zipCode) {
+		
+		if (propertyDataList == null) {
+			System.out.println("Property data are null.");
+			return null; // OK with return null?
+		} 
+		
+		// Set variables for return
+		int aveLivArea = 0;
+		int [] zipCodeAveLivArea = new int [2];
+		
+		// Return the existing data from the hash map if it already exists
+		if (memZipCodeAveLivAreaMap.containsKey(zipCode)) {
+			zipCodeAveLivArea[0] = zipCode;
+			zipCodeAveLivArea[1] = memZipCodeAveLivAreaMap.get(zipCode);
+			return zipCodeAveLivArea;
+		} 
+		
+		else {
+			double sumLivArea = 0;
+			int sumCount = 0;
+			for (PropertyData prop: propertyDataList) {
+				if (zipCode == prop.getZipCode()) {
+					sumLivArea += prop.getTotalLivableArea();
+					sumCount ++;
+				}
+				aveLivArea = (int) sumLivArea / sumCount;
+				memZipCodeAveLivAreaMap.put(zipCode, aveLivArea); // Update memoization hash map
+				
+				zipCodeAveLivArea[0] = zipCode;
+				zipCodeAveLivArea[1] = aveLivArea;
+				return zipCodeAveLivArea;
+			}
+			
+		}
+	}
 
-		// check zipcode in property data (as long as zipcode has more than 5 digits it's valid)
-		if(property) {
-			if(zipcode >= 10000) {
-				valid = true;
+	
+	/*
+	 * Option 6: Total Market Value Per Capita for a specific ZIP code
+	 * @ parameter specified ZIP code
+	 * @ return total ave. market value per capita
+	 */
+	
+	public int [ ] calcTotalMktValPerCap(int zipCode) {
+		
+		if (propertyDataList == null || populationDataList == null) {
+			System.out.println("Property data or pupulation data are null.");
+			return null; // OK with return null?
+		} 
+		
+		// Set variables for return
+		int aveMktValPerCap = 0;
+		int [] zipCodeMktValPerCap = new int [2];
+		
+		// Return the existing data from the hash map if it already exists
+		if (memZipCodeMktValPerCapMap.containsKey(zipCode)) {
+			zipCodeMktValPerCap[0] = zipCode;
+			zipCodeMktValPerCap[1] = memZipCodeMktValPerCapMap.get(zipCode);
+			return zipCodeMktValPerCap;
+		} 
+		
+		// Calculate total property market value by the given zip code or return 0 value if zip code does not exist
+		double sumMktVal = 0;
+		int sumPropCount = 0;
+		for (PropertyData prop: propertyDataList) {
+			if (zipCode == prop.getZipCode()) {
+				sumMktVal += prop.getMarketValue();
+				sumPropCount ++;
 			}
 		}
-		// check zipcode in covid or population data (zipcode needs to be exactly 5 digits to be valid)
-		else {
-			if(zipcode >= 10000 && zipcode <= 99999) {
-				valid = true;
+		if (sumMktVal == 0 || sumPropCount == 0) { // Return 0 if total property market value is 0 or zip code does not exist (sumPropCount is 0)
+			zipCodeMktValPerCap[0] = zipCode;
+			zipCodeMktValPerCap[1] = 0;
+			return zipCodeMktValPerCap;
+		} else {
+			int zipCodePopoulation = calcZipCodePopulation(zipCode);
+			zipCodeMktValPerCap[0] = zipCode;
+			if (zipCodePopoulation == 0) { // Return 0 if the population of the given zip code is 0
+				zipCodeMktValPerCap[1] = 0;
+				return zipCodeMktValPerCap;
 			}
+			zipCodeMktValPerCap[1] = (int) sumMktVal / zipCodePopoulation ;
+			return zipCodeMktValPerCap;
 		}
-		return valid;
+		
 	}
 	
-	public static int returnValidZip(int zipcode) {
-		// when zipcode has more than 5 digits
-		if(zipcode > 99999) {
-			// cast zipcode to string type
-			String zipcodeString = Integer.toString(zipcode);
-			// only keep the first 5 characters
-			zipcode = Integer.parseInt(zipcodeString.substring(0, 5)); 
-			return zipcode;
-		}
+	/*
+	 *Option 7: Additional feature
+	 * @ parameter
+	 * @ return
+	 */
+	
+	
+	
+	
+	/*
+	 * Helper method to create population per zip code for memoization
+	 * @parameter int zip code
+	 * @return current or updated HashMap of zip code & population
+	 */
+	public Map<Integer, Integer> updateMemZipCodePopulationMap (int zipCode) {
+		
+		if (populationDataList == null) {this.memZipCodePopulationMap = null;} 
 		else {
-			return zipcode;
-		}
+			// Firstly check whether memoization zip code population map already has the given zip code. If exists, return the current map as it is
+			if (memZipCodePopulationMap.containsKey(zipCode)) {return memZipCodePopulationMap;}
+			else { // Go through population data list. If the given zip code is found, update the hash map with zip code and population of the given zip code
+				for (PopulationData pop: populationDataList) {
+					if (zipCode == pop.getZipCode()){
+						this.memZipCodePopulationMap.put (zipCode, pop.getPopulation()); // Update the hash map
+					}					
+				}
+			}
+			}
+		return memZipCodePopulationMap; // Return null if pupulationDataList is null or return the existing hash map
 	}
 	
-	// check “YYYY-MM-DD hh:mm:ss” format;
-	public static boolean checkValidTimestamp(String timestamp) {
-		boolean valid = false;
-		String timestampRegex = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]$";
-		// create pattern
-		Pattern pattern = Pattern.compile(timestampRegex);
-		if(pattern.matcher(timestamp).find()) {
-			valid = true;
-		}
-		return valid;
+	/*
+	 * Helper method to get population for the given zip code from memoization Map
+	 * @parameter zip code
+	 * @return population
+	 */
+	
+	public int calcZipCodePopulation (int zipCode) {
+		
+		HashMap<Integer, Integer> zipCodePopoulationMap = new HashMap<>();
+		zipCodePopoulationMap = (HashMap<Integer, Integer>) updateMemZipCodePopulationMap(zipCode);
+		int zipCodePopoulation = zipCodePopoulationMap.get(zipCode);
+		return zipCodePopoulation;
 	}
+	
+	/*
+	 *  Get average data of property (market value or total livable area) for the given zip code
+	 *  Strategy design pattern
+	 */
+	
+	public static int calcAverage(int zipCode, PropertyData propertyData) {
+			
+
+		}
+	
 	
 }
